@@ -1,0 +1,81 @@
+Sub ImportFootnotesFromCalc()
+
+    Dim desktop As Object
+    Dim components As Object
+    Dim enum As Object
+    Dim oComp As Object
+    Dim oWriter As Object
+    Dim oCalc As Object
+    
+    Dim oSheet As Object
+    Dim oNotes As Object
+    
+    Dim row As Long
+    Dim noteCount As Long
+    Dim noteText As String
+    Dim noteIndex As Long
+    Dim num As Long
+    
+    ' Obtenir la liste de tous les documents ouverts
+    desktop = createUnoService("com.sun.star.frame.Desktop")
+    components = desktop.getComponents()
+    enum = components.createEnumeration()
+
+    oWriter = Nothing
+    oCalc = Nothing
+
+    ' Trouver le Writer et le Calc
+    While enum.hasMoreElements()
+        oComp = enum.nextElement()
+        If oComp.supportsService("com.sun.star.text.TextDocument") Then
+            oWriter = oComp
+        ElseIf oComp.supportsService("com.sun.star.sheet.SpreadsheetDocument") Then
+            oCalc = oComp
+        End If
+    Wend
+
+    ' Vérification Writer
+    If oWriter Is Nothing Then
+        MsgBox "Aucun document Writer trouvé. Ouvrez d'abord le fichier contenant les notes.", 48, "Erreur"
+        Exit Sub
+    End If
+
+    ' Vérification Calc
+    If oCalc Is Nothing Then
+        MsgBox "Aucun document Calc trouvé. Ouvrez d'abord le fichier contenant les notes modifiées.", 48, "Erreur"
+        Exit Sub
+    End If
+
+    ' Récupère la première feuille du Calc
+    oSheet = oCalc.Sheets.getByIndex(0)
+    
+    ' Récupère les notes dans Writer
+    oNotes = oWriter.getFootnotes()
+    noteCount = oNotes.getCount()
+
+    ' Parcours des lignes du Calc
+    row = 0
+    
+    Do While True
+        
+        ' Colonne A = numéro simple de la note
+        num = oSheet.getCellByPosition(0, row).Value
+        
+        If num = 0 Then Exit Do ' Fin des données
+        
+        noteIndex = num - 1 ' Writer utilise un index de base 0
+        
+        If noteIndex < noteCount Then
+            ' Colonne C = texte complet de la note
+            noteText = oSheet.getCellByPosition(2, row).String
+            
+            ' Mise à jour de la note
+            oNotes(noteIndex).String = noteText
+        End If
+        
+        row = row + 1
+    Loop
+    
+    MsgBox "Réimportation terminée : " & row & " notes mises à jour.", 64, "Import terminé"
+
+End Sub
